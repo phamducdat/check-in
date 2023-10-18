@@ -12,6 +12,7 @@ import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
@@ -48,7 +49,9 @@ public class UserService {
         return optionalUserEntity.map(mapper::mapFromEntityToDto).orElse(null);
     }
 
-    @Transactional
+    @Transactional(
+            isolation = Isolation.SERIALIZABLE
+    )
     public void checkInByUserId(long userId) throws Exception {
 
         if (checkInService.isCheckInTimeValid()) {
@@ -60,7 +63,7 @@ public class UserService {
             logger.info("Add turn for user");
             UserEntity userEntity = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
             long balance = userEntity.getTurn();
-            userEntity.setTurn(userEntity.getTurn() + 1);
+            userEntity.setTurn(balance + 1);
             userRepository.save(userEntity);
 
             logger.info("Create Turn History");
