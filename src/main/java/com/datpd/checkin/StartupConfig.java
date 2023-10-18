@@ -15,10 +15,9 @@ public class StartupConfig {
             // Check if user table is empty, then add a user.
             if(userRepository.count() == 0) {
                 UserEntity user = new UserEntity();
-                user.setName("Default User");
+                user.setName("John");
                 user.setTurn(1);
                 userRepository.save(user);
-                System.out.println("Added default user to database.");
             }
         };
     }
