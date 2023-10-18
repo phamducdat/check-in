@@ -67,12 +67,12 @@ public class UserService {
 
     @Transactional(isolation = Isolation.SERIALIZABLE, rollbackFor = Exception.class)
     public void checkInByUserId(long userId) throws Exception {
-        RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER_CHECKIN.genKey(userId));
+        RBucket<String> checkInBucket = redissonClient.getBucket(CacheKeyEnum.USER_CHECKIN.genKey(userId));
 
         if (!checkInService.isCheckInTimeValid()) {
             throw new Exception("Invalid check-in time");
         }
-        if (bucket.isExists()) {
+        if (checkInBucket.isExists()) {
             throw new Exception("Check-in already marked");
         }
 
@@ -92,15 +92,15 @@ public class UserService {
             turnHistoryEntity.setCreateAt(new Date());
             turnHistoryRepository.save(turnHistoryEntity);
 
-            bucket.set(CacheKeyEnum.USER_CHECKIN.genKey(userId));
-            bucket.expire(checkInService.getExpiryTime().toInstant());
+            checkInBucket.set(CacheKeyEnum.USER_CHECKIN.genKey(userId));
+            checkInBucket.expire(checkInService.getExpiryTime().toInstant());
 
             userBucket.delete();
 
         } catch (Exception e) {
             if (e instanceof DataIntegrityViolationException)
                 logger.error("Database error during check-in for user: " + userId, e);
-            bucket.delete();
+            checkInBucket.delete();
             throw e;
         }
     }
