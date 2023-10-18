@@ -11,6 +11,7 @@ import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,35 +50,37 @@ public class UserService {
         return optionalUserEntity.map(mapper::mapFromEntityToDto).orElse(null);
     }
 
-    @Transactional(
-            isolation = Isolation.SERIALIZABLE
-    )
+    @Transactional(isolation = Isolation.SERIALIZABLE, rollbackFor = Exception.class)
     public void checkInByUserId(long userId) throws Exception {
+        try {
+            if (checkInService.isCheckInTimeValid()) {
+                RBucket<String> bucket = redissonClient.getBucket("checkin_" + userId);
 
-        if (checkInService.isCheckInTimeValid()) {
-            RBucket<String> bucket = redissonClient.getBucket("checkin_" + userId);
+                if (bucket.isExists())
+                    throw new Exception("Check-in already marked");
 
-            if (bucket.isExists())
-                throw new Exception("Check-in already marked");
+                logger.info("Add turn for user");
+                UserEntity userEntity = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+                long balance = userEntity.getTurn();
+                userEntity.setTurn(balance + 1);
+                userRepository.save(userEntity);
 
-            logger.info("Add turn for user");
-            UserEntity userEntity = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-            long balance = userEntity.getTurn();
-            userEntity.setTurn(balance + 1);
-            userRepository.save(userEntity);
+                logger.info("Create Turn History");
+                TurnHistoryEntity turnHistoryEntity = new TurnHistoryEntity();
+                turnHistoryEntity.setUserId(userId);
+                turnHistoryEntity.setAmount(1);
+                turnHistoryEntity.setBalance(balance);
+                turnHistoryEntity.setCreateAt(new Date());
+                turnHistoryRepository.save(turnHistoryEntity);
 
-            logger.info("Create Turn History");
-            TurnHistoryEntity turnHistoryEntity = new TurnHistoryEntity();
-            turnHistoryEntity.setUserId(userId);
-            turnHistoryEntity.setAmount(1);
-            turnHistoryEntity.setBalance(balance);
-            turnHistoryEntity.setCreateAt(new Date());
-            turnHistoryRepository.save(turnHistoryEntity);
-
-            bucket.set("checkedIn");
-            bucket.expire(checkInService.getExpiryTime().toInstant());
-        } else
-            throw new Exception("Invalid check-in time");
+                bucket.set("checkedIn");
+                bucket.expire(checkInService.getExpiryTime().toInstant());
+            } else
+                throw new Exception("Invalid check-in time");
+        } catch (DataIntegrityViolationException dive) {
+            logger.error("Database error during check-in for user: " + userId, dive);
+            throw dive;
+        }
     }
 
 }
