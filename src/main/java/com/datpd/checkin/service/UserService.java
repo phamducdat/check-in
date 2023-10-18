@@ -68,7 +68,6 @@ public class UserService {
     @Transactional(isolation = Isolation.SERIALIZABLE, rollbackFor = Exception.class)
     public void checkInByUserId(long userId) throws Exception {
         RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER_CHECKIN.genKey(userId));
-        RBucket<UserDto> userBucket = redissonClient.getBucket(CacheKeyEnum.USER_DTO.genKey(userId));
 
 
         if (!checkInService.isCheckInTimeValid()) {
@@ -79,6 +78,7 @@ public class UserService {
         }
 
         try {
+            RBucket<UserDto> userBucket = redissonClient.getBucket(CacheKeyEnum.USER_DTO.genKey(userId));
             logger.info("Add turn for user");
             UserEntity userEntity = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
             long balance = userEntity.getTurn();
