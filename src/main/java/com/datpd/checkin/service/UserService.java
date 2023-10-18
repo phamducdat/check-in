@@ -72,7 +72,8 @@ public class UserService {
         if (!checkInService.isCheckInTimeValid()) {
             throw new Exception("Invalid check-in time");
         }
-        if (checkInBucket.isExists()) {
+        if (checkInBucket.isExists() &&
+                checkInService.exitsCheckinAtValidTimes(userId)) {
             throw new Exception("Check-in already marked");
         }
 
