@@ -1,7 +1,6 @@
 package com.datpd.checkin.util;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.datpd.checkin.repository.TurnHistoryRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -12,6 +11,12 @@ import java.util.Date;
 
 @Service
 public class CheckInService {
+
+    private final TurnHistoryRepository turnHistoryRepository;
+
+    public CheckInService(TurnHistoryRepository turnHistoryRepository) {
+        this.turnHistoryRepository = turnHistoryRepository;
+    }
 
     public Date getExpiryTime() {
         LocalTime now = LocalTime.now();
@@ -29,6 +34,18 @@ public class CheckInService {
     public boolean isCheckInTimeValid() {
         LocalTime now = LocalTime.now();
         return TimeConstants.VALID_CHECKIN_TIMES.stream().anyMatch(timeRange -> timeRange.isWithin(now));
+    }
+
+    public boolean exitsCheckinAtValidTimes(long userId) {
+        LocalDate now = LocalDate.now();
+        return TimeConstants.VALID_CHECKIN_TIMES.stream().anyMatch(timeRange -> {
+            if (timeRange.isWithin(LocalTime.now())) {
+                Date startTime = Date.from(LocalDateTime.of(now, timeRange.getStart()).atZone(ZoneId.systemDefault()).toInstant());
+                Date endTime = Date.from(LocalDateTime.of(now, timeRange.getEnd()).atZone(ZoneId.systemDefault()).toInstant());
+                return turnHistoryRepository.existsByUserIdAndCreateAtBetween(userId, startTime, endTime);
+            }
+            return false;
+        });
     }
 
 }
