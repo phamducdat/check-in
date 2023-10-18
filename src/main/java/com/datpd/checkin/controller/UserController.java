@@ -2,6 +2,7 @@ package com.datpd.checkin.controller;
 
 import com.datpd.checkin.dto.UserDto;
 import com.datpd.checkin.service.UserService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,7 +21,12 @@ public class UserController {
     }
 
     @PostMapping("/check-in/{userId}")
-    public UserDto checkInByUserId(@PathVariable long userId) {
-        return userService.checkInByUserId(userId);
+    public ResponseEntity<String> checkInByUserId(@PathVariable long userId) {
+        try {
+            userService.checkInByUserId(userId);
+            return ResponseEntity.ok("Check-in successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 }
