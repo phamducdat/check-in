@@ -69,7 +69,6 @@ public class UserService {
     public void checkInByUserId(long userId) throws Exception {
         RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER_CHECKIN.genKey(userId));
 
-
         if (!checkInService.isCheckInTimeValid()) {
             throw new Exception("Invalid check-in time");
         }
@@ -98,11 +97,9 @@ public class UserService {
 
             userBucket.delete();
 
-        } catch (DataIntegrityViolationException dive) {
-            logger.error("Database error during check-in for user: " + userId, dive);
-            bucket.delete();
-            throw dive;
         } catch (Exception e) {
+            if (e instanceof DataIntegrityViolationException)
+                logger.error("Database error during check-in for user: " + userId, e);
             bucket.delete();
             throw e;
         }
