@@ -16,7 +16,7 @@ public class StartupConfig {
             if(userRepository.count() == 0) {
                 UserEntity user = new UserEntity();
                 user.setName("John");
-                user.setTurn(1);
+                user.setTurn(0);
                 userRepository.save(user);
             }
         };

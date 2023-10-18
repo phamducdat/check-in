@@ -13,12 +13,18 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+
+    private final TurnHistoryService turnHistoryService;
     private final UserMapper mapper;
 
     private final CheckInService checkInService;
 
-    public UserService(UserRepository userRepository, UserMapper mapper, CheckInService checkInService) {
+    public UserService(UserRepository userRepository,
+                       TurnHistoryService turnHistoryService,
+                       UserMapper mapper,
+                       CheckInService checkInService) {
         this.userRepository = userRepository;
+        this.turnHistoryService = turnHistoryService;
         this.mapper = mapper;
         this.checkInService = checkInService;
     }
@@ -32,10 +38,18 @@ public class UserService {
         Optional<UserEntity> optionalUserEntity = userRepository.findById(userId);
         if (optionalUserEntity.isPresent()) {
             UserEntity userEntity = optionalUserEntity.get();
+
+            // CheckInTimeValid
             if (checkInService.isCheckInTimeValid()) {
+                long balance = userEntity.getTurn();
                 userEntity.setTurn(userEntity.getTurn() + 1);
                 userRepository.save(userEntity);
 
+                // Create history
+                turnHistoryService.createTurnHistory(
+                        userEntity.getId(),
+                        1L,
+                        balance);
             }
             return mapper.mapFromEntityToDto(userEntity);
         } else
