@@ -74,6 +74,7 @@ public class UserService {
 
         boolean exitsCheckinAtValidTimes = checkInService.exitsCheckinAtValidTimes(userId);
         exitCheckInAtValidTimesBucket.set(exitsCheckinAtValidTimes);
+        exitCheckInAtValidTimesBucket.expire(checkInService.getExpiryTime().toInstant());
 
         return exitsCheckinAtValidTimes;
 
