@@ -53,35 +53,42 @@ public class UserService {
 
     @Transactional(isolation = Isolation.SERIALIZABLE, rollbackFor = Exception.class)
     public void checkInByUserId(long userId) throws Exception {
+        RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER.genKey(userId));
+
+        if (!checkInService.isCheckInTimeValid()) {
+            throw new Exception("Invalid check-in time");
+        }
+        if (bucket.isExists()) {
+            throw new Exception("Check-in already marked");
+        }
+
         try {
-            if (checkInService.isCheckInTimeValid()) {
-                RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER.genKey(userId));
+            logger.info("Add turn for user");
+            UserEntity userEntity = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+            long balance = userEntity.getTurn();
+            userEntity.setTurn(balance + 1);
+            userRepository.save(userEntity);
 
-                if (bucket.isExists())
-                    throw new Exception("Check-in already marked");
+            logger.info("Create Turn History");
+            TurnHistoryEntity turnHistoryEntity = new TurnHistoryEntity();
+            turnHistoryEntity.setUserId(userId);
+            turnHistoryEntity.setAmount(1);
+            turnHistoryEntity.setBalance(balance);
+            turnHistoryEntity.setCreateAt(new Date());
+            turnHistoryRepository.save(turnHistoryEntity);
 
-                logger.info("Add turn for user");
-                UserEntity userEntity = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-                long balance = userEntity.getTurn();
-                userEntity.setTurn(balance + 1);
-                userRepository.save(userEntity);
+            bucket.set("checkedIn");
+            bucket.expire(checkInService.getExpiryTime().toInstant());
 
-                logger.info("Create Turn History");
-                TurnHistoryEntity turnHistoryEntity = new TurnHistoryEntity();
-                turnHistoryEntity.setUserId(userId);
-                turnHistoryEntity.setAmount(1);
-                turnHistoryEntity.setBalance(balance);
-                turnHistoryEntity.setCreateAt(new Date());
-                turnHistoryRepository.save(turnHistoryEntity);
-
-                bucket.set("checkedIn");
-                bucket.expire(checkInService.getExpiryTime().toInstant());
-            } else
-                throw new Exception("Invalid check-in time");
         } catch (DataIntegrityViolationException dive) {
             logger.error("Database error during check-in for user: " + userId, dive);
+            bucket.delete();
             throw dive;
+        } catch (Exception e) {
+            bucket.delete();
+            throw e;
         }
     }
+
 
 }
