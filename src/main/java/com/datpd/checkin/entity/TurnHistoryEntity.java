@@ -9,8 +9,6 @@ import java.util.Date;
 @Table(name = "turn_history")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class TurnHistoryEntity {
 
     @Id
