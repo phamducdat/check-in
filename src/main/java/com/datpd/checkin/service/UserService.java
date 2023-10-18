@@ -56,28 +56,26 @@ public class UserService {
             UserEntity userEntity = optionalUserEntity.get();
 
             if (checkInService.isCheckInTimeValid()) {
-
                 RSet<String> set = redissonClient.getSet("checkin");
                 String key = "checkin_" + userId;
 
-                if (set.contains(key))
-                    throw new RuntimeException("Check-in already marked");
+                if (!set.contains(key)) {
+                    logger.info("Add turn for user");
+                    long balance = userEntity.getTurn();
+                    userEntity.setTurn(userEntity.getTurn() + 1);
+                    userRepository.save(userEntity);
 
-                logger.info("Add turn for user");
-                long balance = userEntity.getTurn();
-                userEntity.setTurn(userEntity.getTurn() + 1);
-                userRepository.save(userEntity);
+                    logger.info("Create Turn History");
+                    TurnHistoryEntity turnHistoryEntity = new TurnHistoryEntity();
+                    turnHistoryEntity.setUserId(userId);
+                    turnHistoryEntity.setAmount(1);
+                    turnHistoryEntity.setBalance(balance);
+                    turnHistoryEntity.setCreateAt(new Date());
+                    turnHistoryRepository.save(turnHistoryEntity);
 
-                logger.info("Create Turn History");
-                TurnHistoryEntity turnHistoryEntity = new TurnHistoryEntity();
-                turnHistoryEntity.setUserId(userId);
-                turnHistoryEntity.setAmount(1);
-                turnHistoryEntity.setBalance(balance);
-                turnHistoryEntity.setCreateAt(new Date());
-                turnHistoryRepository.save(turnHistoryEntity);
-
-                set.add(key);
-                set.expire(checkInService.getExpiryTime().toInstant());
+                    set.add(key);
+                    set.expire(checkInService.getExpiryTime().toInstant());
+                }
 
             }
             return mapper.mapFromEntityToDto(userEntity);
