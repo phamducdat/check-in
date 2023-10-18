@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class UserService {
@@ -47,13 +48,28 @@ public class UserService {
     }
 
     public UserDto getUserById(long id) {
+        RBucket<UserDto> userBucket = redissonClient.getBucket(CacheKeyEnum.USER_DTO.genKey(id));
+        UserDto cachedUserDto = userBucket.get();
+
+        if (cachedUserDto != null) {
+            return cachedUserDto;
+        }
         Optional<UserEntity> optionalUserEntity = userRepository.findById(id);
-        return optionalUserEntity.map(mapper::mapFromEntityToDto).orElse(null);
+        UserDto userDto = optionalUserEntity.map(mapper::mapFromEntityToDto).orElse(null);
+
+        if (userDto != null) {
+            userBucket.set(userDto);
+            userBucket.expire(10, TimeUnit.MINUTES);
+        }
+
+        return userDto;
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE, rollbackFor = Exception.class)
     public void checkInByUserId(long userId) throws Exception {
-        RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER.genKey(userId));
+        RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER_CHECKIN.genKey(userId));
+        RBucket<UserDto> userBucket = redissonClient.getBucket(CacheKeyEnum.USER_DTO.genKey(userId));
+
 
         if (!checkInService.isCheckInTimeValid()) {
             throw new Exception("Invalid check-in time");
@@ -79,6 +95,8 @@ public class UserService {
 
             bucket.set("checkedIn");
             bucket.expire(checkInService.getExpiryTime().toInstant());
+
+            userBucket.delete();
 
         } catch (DataIntegrityViolationException dive) {
             logger.error("Database error during check-in for user: " + userId, dive);
