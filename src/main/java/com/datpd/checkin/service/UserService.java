@@ -8,14 +8,12 @@ import com.datpd.checkin.repository.TurnHistoryRepository;
 import com.datpd.checkin.repository.UserRepository;
 import com.datpd.checkin.util.CheckInService;
 import org.redisson.api.RBucket;
-import org.redisson.api.RSet;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.util.Date;
 import java.util.Optional;
 
@@ -55,7 +53,6 @@ public class UserService {
 
         if (checkInService.isCheckInTimeValid()) {
             RBucket<String> bucket = redissonClient.getBucket("checkin_" + userId);
-            String key = "checkin_" + userId;
 
             if (bucket.isExists())
                 throw new Exception("Check-in already marked");
