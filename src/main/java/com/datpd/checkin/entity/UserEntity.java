@@ -18,6 +18,9 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
+    @Column(name = "name", columnDefinition = "BIGINT COMMENT 'User's name")
+    private String name;
+
     @Column(name = "turn", columnDefinition = "BIGINT COMMENT 'Current turn number'")
     private long turn;
 }
