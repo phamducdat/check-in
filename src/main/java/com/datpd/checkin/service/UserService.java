@@ -7,6 +7,8 @@ import com.datpd.checkin.mapper.UserMapper;
 import com.datpd.checkin.repository.TurnHistoryRepository;
 import com.datpd.checkin.repository.UserRepository;
 import com.datpd.checkin.util.CheckInService;
+import org.redisson.api.RSet;
+import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,19 +25,20 @@ public class UserService {
     private final UserRepository userRepository;
     private final TurnHistoryRepository turnHistoryRepository;
 
-    private final TurnHistoryService turnHistoryService;
+    private final RedissonClient redissonClient;
+
     private final UserMapper mapper;
 
     private final CheckInService checkInService;
 
     public UserService(UserRepository userRepository,
                        TurnHistoryRepository turnHistoryRepository,
-                       TurnHistoryService turnHistoryService,
                        UserMapper mapper,
-                       CheckInService checkInService) {
+                       CheckInService checkInService,
+                       RedissonClient redissonClient) {
         this.userRepository = userRepository;
         this.turnHistoryRepository = turnHistoryRepository;
-        this.turnHistoryService = turnHistoryService;
+        this.redissonClient = redissonClient;
         this.mapper = mapper;
         this.checkInService = checkInService;
     }
@@ -47,18 +50,24 @@ public class UserService {
 
     @Transactional
     public UserDto checkInByUserId(long userId) {
+
         Optional<UserEntity> optionalUserEntity = userRepository.findById(userId);
         if (optionalUserEntity.isPresent()) {
             UserEntity userEntity = optionalUserEntity.get();
 
-            // CheckInTimeValid
-            if (checkInService.hasUserCheckedInDuringValidTimes(userId)) {
+            if (checkInService.isCheckInTimeValid()) {
+
+                RSet<String> set = redissonClient.getSet("checkin");
+                String key = "checkin_" + userId;
+
+                if (set.contains(key))
+                    throw new RuntimeException("Check-in already marked");
+
                 logger.info("Add turn for user");
                 long balance = userEntity.getTurn();
                 userEntity.setTurn(userEntity.getTurn() + 1);
                 userRepository.save(userEntity);
 
-                // Create history
                 logger.info("Create Turn History");
                 TurnHistoryEntity turnHistoryEntity = new TurnHistoryEntity();
                 turnHistoryEntity.setUserId(userId);
@@ -66,6 +75,9 @@ public class UserService {
                 turnHistoryEntity.setBalance(balance);
                 turnHistoryEntity.setCreateAt(new Date());
                 turnHistoryRepository.save(turnHistoryEntity);
+
+                set.add(key);
+                set.expire(checkInService.getExpiryTime().toInstant());
 
             }
             return mapper.mapFromEntityToDto(userEntity);

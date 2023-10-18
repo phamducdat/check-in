@@ -18,7 +18,7 @@ public class UserMapper {
         UserDto to = new UserDto();
         to.setId(from.getId());
         to.setName(from.getName());
-        to.setEnableCheckin(checkInService.hasUserCheckedInDuringValidTimes(from.getId()));
+        to.setEnableCheckin(checkInService.isCheckInTimeValid());
         to.setTurn(from.getTurn());
         return to;
     }
