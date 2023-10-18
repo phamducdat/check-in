@@ -93,7 +93,7 @@ public class UserService {
             turnHistoryEntity.setCreateAt(new Date());
             turnHistoryRepository.save(turnHistoryEntity);
 
-            bucket.set("checkedIn");
+            bucket.set(CacheKeyEnum.USER_CHECKIN.genKey(userId));
             bucket.expire(checkInService.getExpiryTime().toInstant());
 
             userBucket.delete();
