@@ -40,7 +40,7 @@ public class UserService {
             UserEntity userEntity = optionalUserEntity.get();
 
             // CheckInTimeValid
-            if (checkInService.isCheckInTimeValid()) {
+            if (checkInService.hasUserCheckedInDuringValidTimes(userId)) {
                 long balance = userEntity.getTurn();
                 userEntity.setTurn(userEntity.getTurn() + 1);
                 userRepository.save(userEntity);
