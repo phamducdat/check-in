@@ -18,7 +18,7 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
-    @Column(name = "name", columnDefinition = "BIGINT COMMENT 'User's name")
+    @Column(name = "name", columnDefinition = "VARCHAR(255) COMMENT 'name of User'")
     private String name;
 
     @Column(name = "turn", columnDefinition = "BIGINT COMMENT 'Current turn number'")
