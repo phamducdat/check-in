@@ -13,8 +13,6 @@ import java.util.Date;
 @Service
 public class CheckInService {
 
-    private final Logger logger = LoggerFactory.getLogger(CheckInService.class);
-
     public Date getExpiryTime() {
         LocalTime now = LocalTime.now();
         return TimeConstants.VALID_CHECKIN_TIMES.stream()

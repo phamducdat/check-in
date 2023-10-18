@@ -17,7 +17,7 @@ public class UserMapper {
     }
 
     public UserDto mapFromEntityToDto(UserEntity from) {
-        RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER.genKey(from.getId()));
+        RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER_CHECKIN.genKey(from.getId()));
         UserDto to = new UserDto();
         to.setId(from.getId());
         to.setName(from.getName());
