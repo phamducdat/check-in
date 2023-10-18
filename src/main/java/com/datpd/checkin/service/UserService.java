@@ -65,6 +65,20 @@ public class UserService {
         return userDto;
     }
 
+    private boolean checkExistCheckInAtValidTimes(long userId) {
+        RBucket<Boolean> exitCheckInAtValidTimesBucket = redissonClient.getBucket(CacheKeyEnum.USER_EXIT_CHECKIN_AT_VALID_TIMES.genKey(userId));
+        Boolean cachedExitCheckInAtValidTimes = exitCheckInAtValidTimesBucket.get();
+
+        if (cachedExitCheckInAtValidTimes != null)
+            return cachedExitCheckInAtValidTimes;
+
+        boolean exitsCheckinAtValidTimes = checkInService.exitsCheckinAtValidTimes(userId);
+        exitCheckInAtValidTimesBucket.set(exitsCheckinAtValidTimes);
+
+        return exitsCheckinAtValidTimes;
+
+    }
+
     @Transactional(isolation = Isolation.SERIALIZABLE, rollbackFor = Exception.class)
     public void checkInByUserId(long userId) throws Exception {
         RBucket<String> checkInBucket = redissonClient.getBucket(CacheKeyEnum.USER_CHECKIN.genKey(userId));
@@ -73,12 +87,15 @@ public class UserService {
             throw new Exception("Invalid check-in time");
         }
         if (checkInBucket.isExists() &&
-                checkInService.exitsCheckinAtValidTimes(userId)) {
+                checkExistCheckInAtValidTimes(userId)) {
             throw new Exception("Check-in already marked");
         }
 
         try {
             RBucket<UserDto> userBucket = redissonClient.getBucket(CacheKeyEnum.USER_DTO.genKey(userId));
+            RBucket<Boolean> exitCheckInAtValidTimesBucket =
+                    redissonClient.getBucket(CacheKeyEnum.USER_EXIT_CHECKIN_AT_VALID_TIMES.genKey(userId));
+
             logger.info("Add turn for user");
             UserEntity userEntity = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
             long balance = userEntity.getTurn();
@@ -97,7 +114,7 @@ public class UserService {
             checkInBucket.expire(checkInService.getExpiryTime().toInstant());
 
             userBucket.delete();
-
+            exitCheckInAtValidTimesBucket.delete();
         } catch (Exception e) {
             if (e instanceof DataIntegrityViolationException)
                 logger.error("Database error during check-in for user: " + userId, e);
