@@ -49,13 +49,13 @@ public class UserService {
     }
 
     @Transactional
-    public UserDto checkInByUserId(long userId) {
+    public void checkInByUserId(long userId) throws Exception {
 
-        Optional<UserEntity> optionalUserEntity = userRepository.findById(userId);
-        if (optionalUserEntity.isPresent()) {
-            UserEntity userEntity = optionalUserEntity.get();
+        if (checkInService.isCheckInTimeValid()) {
+            Optional<UserEntity> optionalUserEntity = userRepository.findById(userId);
+            if (optionalUserEntity.isPresent()) {
+                UserEntity userEntity = optionalUserEntity.get();
 
-            if (checkInService.isCheckInTimeValid()) {
                 RSet<String> set = redissonClient.getSet("checkin");
                 String key = "checkin_" + userId;
 
@@ -78,8 +78,7 @@ public class UserService {
                 }
 
             }
-            return mapper.mapFromEntityToDto(userEntity);
         } else
-            return null;
+            throw new Exception("Invalid check-in time");
     }
 }
