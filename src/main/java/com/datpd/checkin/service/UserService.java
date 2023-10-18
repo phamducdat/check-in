@@ -6,6 +6,7 @@ import com.datpd.checkin.entity.UserEntity;
 import com.datpd.checkin.mapper.UserMapper;
 import com.datpd.checkin.repository.TurnHistoryRepository;
 import com.datpd.checkin.repository.UserRepository;
+import com.datpd.checkin.util.CacheKeyEnum;
 import com.datpd.checkin.util.CheckInService;
 import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;
@@ -54,7 +55,7 @@ public class UserService {
     public void checkInByUserId(long userId) throws Exception {
         try {
             if (checkInService.isCheckInTimeValid()) {
-                RBucket<String> bucket = redissonClient.getBucket("checkin_" + userId);
+                RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER.genKey(userId));
 
                 if (bucket.isExists())
                     throw new Exception("Check-in already marked");

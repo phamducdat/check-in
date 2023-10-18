@@ -2,7 +2,8 @@ package com.datpd.checkin.mapper;
 
 import com.datpd.checkin.dto.UserDto;
 import com.datpd.checkin.entity.UserEntity;
-import org.redisson.api.RSet;
+import com.datpd.checkin.util.CacheKeyEnum;
+import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 
@@ -16,12 +17,11 @@ public class UserMapper {
     }
 
     public UserDto mapFromEntityToDto(UserEntity from) {
-        RSet<String> set = redissonClient.getSet("checkin");
-        String key = "checkin_" + from.getId();
+        RBucket<String> bucket = redissonClient.getBucket(CacheKeyEnum.USER.genKey(from.getId()));
         UserDto to = new UserDto();
         to.setId(from.getId());
         to.setName(from.getName());
-        to.setEnableCheckin(!set.contains(key));
+        to.setEnableCheckin(!bucket.isExists());
         to.setTurn(from.getTurn());
         return to;
     }
