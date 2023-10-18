@@ -52,33 +52,30 @@ public class UserService {
     public void checkInByUserId(long userId) throws Exception {
 
         if (checkInService.isCheckInTimeValid()) {
-            Optional<UserEntity> optionalUserEntity = userRepository.findById(userId);
-            if (optionalUserEntity.isPresent()) {
-                UserEntity userEntity = optionalUserEntity.get();
+            RSet<String> set = redissonClient.getSet("checkin");
+            String key = "checkin_" + userId;
 
-                RSet<String> set = redissonClient.getSet("checkin");
-                String key = "checkin_" + userId;
+            if (set.contains(key))
+                throw new Exception("Check-in already marked");
 
-                if (!set.contains(key)) {
-                    logger.info("Add turn for user");
-                    long balance = userEntity.getTurn();
-                    userEntity.setTurn(userEntity.getTurn() + 1);
-                    userRepository.save(userEntity);
+            logger.info("Add turn for user");
+            UserEntity userEntity = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+            long balance = userEntity.getTurn();
+            userEntity.setTurn(userEntity.getTurn() + 1);
+            userRepository.save(userEntity);
 
-                    logger.info("Create Turn History");
-                    TurnHistoryEntity turnHistoryEntity = new TurnHistoryEntity();
-                    turnHistoryEntity.setUserId(userId);
-                    turnHistoryEntity.setAmount(1);
-                    turnHistoryEntity.setBalance(balance);
-                    turnHistoryEntity.setCreateAt(new Date());
-                    turnHistoryRepository.save(turnHistoryEntity);
+            logger.info("Create Turn History");
+            TurnHistoryEntity turnHistoryEntity = new TurnHistoryEntity();
+            turnHistoryEntity.setUserId(userId);
+            turnHistoryEntity.setAmount(1);
+            turnHistoryEntity.setBalance(balance);
+            turnHistoryEntity.setCreateAt(new Date());
+            turnHistoryRepository.save(turnHistoryEntity);
 
-                    set.add(key);
-                    set.expire(checkInService.getExpiryTime().toInstant());
-                }
-
-            }
+            set.add(key);
+            set.expire(checkInService.getExpiryTime().toInstant());
         } else
             throw new Exception("Invalid check-in time");
     }
+
 }

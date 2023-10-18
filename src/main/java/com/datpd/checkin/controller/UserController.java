@@ -24,7 +24,7 @@ public class UserController {
     public ResponseEntity<String> checkInByUserId(@PathVariable long userId) {
         try {
             userService.checkInByUserId(userId);
-            return ResponseEntity.ok("Checkin successfully");
+            return ResponseEntity.ok("Check-in successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
