@@ -5,12 +5,16 @@ import com.datpd.checkin.entity.UserEntity;
 import com.datpd.checkin.mapper.UserMapper;
 import com.datpd.checkin.repository.UserRepository;
 import com.datpd.checkin.util.CheckInService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
 @Service
 public class UserService {
+
+    private final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
 
@@ -41,6 +45,7 @@ public class UserService {
 
             // CheckInTimeValid
             if (checkInService.hasUserCheckedInDuringValidTimes(userId)) {
+                logger.info("Add turn for user");
                 long balance = userEntity.getTurn();
                 userEntity.setTurn(userEntity.getTurn() + 1);
                 userRepository.save(userEntity);
