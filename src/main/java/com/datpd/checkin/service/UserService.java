@@ -7,6 +7,7 @@ import com.datpd.checkin.mapper.UserMapper;
 import com.datpd.checkin.repository.TurnHistoryRepository;
 import com.datpd.checkin.repository.UserRepository;
 import com.datpd.checkin.util.CheckInService;
+import org.redisson.api.RBucket;
 import org.redisson.api.RSet;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.Date;
 import java.util.Optional;
 
@@ -52,10 +54,10 @@ public class UserService {
     public void checkInByUserId(long userId) throws Exception {
 
         if (checkInService.isCheckInTimeValid()) {
-            RSet<String> set = redissonClient.getSet("checkin");
+            RBucket<String> bucket = redissonClient.getBucket("checkin_" + userId);
             String key = "checkin_" + userId;
 
-            if (set.contains(key))
+            if (bucket.isExists())
                 throw new Exception("Check-in already marked");
 
             logger.info("Add turn for user");
@@ -72,8 +74,8 @@ public class UserService {
             turnHistoryEntity.setCreateAt(new Date());
             turnHistoryRepository.save(turnHistoryEntity);
 
-            set.add(key);
-            set.expire(checkInService.getExpiryTime().toInstant());
+            bucket.set("checkedIn");
+            bucket.expire(checkInService.getExpiryTime().toInstant());
         } else
             throw new Exception("Invalid check-in time");
     }
